@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Queue Cure '26 — Receptionist</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2128;
+      --border: #30363d;
+      --blue: #2f81f7;
+      --blue-dim: #1a4a8a;
+      --green: #3fb950;
+      --red: #f85149;
+      --amber: #d29922;
+      --text: #e6edf3;
+      --text-dim: #8b949e;
+      --text-dimmer: #484f58;
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 32px; height: 32px;
+      background: var(--blue);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .brand h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .brand span {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-dimmer);
+    }
+    .dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+    /* ── Layout ── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 0;
+    }
+
+    /* ── Left Panel ── */
+    .left-panel {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dimmer);
+      margin-bottom: 12px;
+    }
+
+    /* Current token card */
+    .current-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .token-display {
+      font-family: var(--mono);
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--blue);
+      letter-spacing: -2px;
+      margin: 8px 0 4px;
+    }
+
+    .token-display.empty {
+      color: var(--text-dimmer);
+      font-size: 40px;
+    }
+
+    .token-name {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* ── Add Patient Form ── */
+    .add-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="text"], input[type="number"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus {
+      border-color: var(--blue);
+    }
+
+    input::placeholder { color: var(--text-dimmer); }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+
+    .btn-call {
+      background: var(--green);
+      color: #0d1117;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px;
+      width: 100%;
+      border-radius: 10px;
+    }
+    .btn-call:hover:not(:disabled) { opacity: 0.88; }
+
+    .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--border); font-size: 12px; padding: 6px 10px; }
+    .btn-danger:hover:not(:disabled) { border-color: var(--red); background: rgba(248,81,73,0.08); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .btn-ghost:hover { border-color: var(--amber); color: var(--amber); }
+
+    /* Avg time row */
+    .avg-time-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .avg-time-row input[type="number"] {
+      width: 80px;
+      text-align: center;
+    }
+
+    .avg-time-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      flex: 1;
+    }
+
+    /* Reset row */
+    .danger-zone {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    /* ── Right Panel (Queue List) ── */
+    .right-panel {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .queue-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .queue-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .queue-badge {
+      background: var(--blue-dim);
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--mono);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .queue-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.2s;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .queue-item:hover { border-color: #3d4450; }
+
+    .q-token {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--blue);
+      min-width: 48px;
+    }
+
+    .q-info { flex: 1; }
+    .q-name { font-size: 14px; font-weight: 500; }
+    .q-wait {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .q-pos {
+      font-size: 11px;
+      color: var(--text-dimmer);
+      font-family: var(--mono);
+      min-width: 32px;
+      text-align: right;
+    }
+
+    .empty-queue {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dimmer);
+    }
+
+    .empty-queue .emoji { font-size: 40px; margin-bottom: 12px; }
+    .empty-queue p { font-size: 14px; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      transition: transform 0.25s ease;
+      z-index: 100;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; }
+      .right-panel { border-top: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">🏥</div>
+    <div>
+      <h1>Queue Cure <span>'26</span></h1>
+      <span>Receptionist Dashboard</span>
+    </div>
+  </div>
+  <div class="status-pill">
+    <div class="dot" id="connDot"></div>
+    <span id="connLabel">Connecting…</span>
+  </div>
+</header>
+
+<main>
+  <!-- Left Panel -->
+  <div class="left-panel">
+
+    <!-- Currently serving -->
+    <div>
+      <div class="section-label">Now Serving</div>
+      <div class="current-card">
+        <div id="curToken" class="token-display empty">—</div>
+        <div id="curName" class="token-name">No patient in progress</div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-value" id="statQueue">0</div>
+        <div class="stat-label">In queue</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="statServed">0</div>
+        <div class="stat-label">Served today</div>
+      </div>
+    </div>
+
+    <!-- Call Next -->
+    <div>
+      <div class="section-label">Actions</div>
+      <button class="btn btn-call" id="btnCallNext" disabled onclick="callNext()">
+        ▶ Call Next Patient
+      </button>
+    </div>
+
+    <!-- Add Patient -->
+    <div>
+      <div class="section-label">Add Patient</div>
+      <div class="add-form">
+        <div class="input-row">
+          <input type="text" id="patientName" placeholder="Patient name" maxlength="60"
+            onkeydown="if(event.key==='Enter') addPatient()" />
+          <button class="btn btn-primary" onclick="addPatient()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avg consultation time -->
+    <div>
+      <div class="section-label">Avg Consultation Time</div>
+      <div class="avg-time-row">
+        <input type="number" id="avgTime" value="10" min="1" max="120" />
+        <span class="avg-time-label">minutes per patient</span>
+        <button class="btn btn-primary" onclick="setAvgTime()">Set</button>
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="danger-zone">
+      <div class="section-label">Reset</div>
+      <button class="btn btn-ghost" onclick="confirmReset()">🗑 Reset entire queue</button>
+    </div>
+
+  </div>
+
+  <!-- Right Panel — Queue -->
+  <div class="right-panel">
+    <div class="queue-header">
+      <span class="queue-title">Waiting Queue</span>
+      <span class="queue-badge" id="queueBadge">0</span>
+    </div>
+    <div class="queue-list" id="queueList"></div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const socket = io();
+  let currentState = null;
+
+  socket.on("connect", () => {
+    document.getElementById("connDot").className = "dot connected";
+    document.getElementById("connLabel").textContent = "Live";
+  });
+
+  socket.on("disconnect", () => {
+    document.getElementById("connDot").className = "dot";
+    document.getElementById("connLabel").textContent = "Disconnected";
+  });
+
+  socket.on("queue_update", (data) => {
+    currentState = data;
+    render(data);
+  });
+
+  function render(data) {
+    // Current token
+    const curToken = document.getElementById("curToken");
+    const curName = document.getElementById("curName");
+    if (data.currentToken !== null) {
+      curToken.textContent = String(data.currentToken).padStart(3, "0");
+      curToken.className = "token-display";
+      curName.textContent = data.currentName;
+    } else {
+      curToken.textContent = "—";
+      curToken.className = "token-display empty";
+      curName.textContent = "No patient in progress";
+    }
+
+    // Stats
+    document.getElementById("statQueue").textContent = data.queueLength;
+    document.getElementById("statServed").textContent = data.servedCount;
+    document.getElementById("queueBadge").textContent = data.queueLength;
+
+    // Avg time input (don't override if user is editing)
+    if (document.activeElement.id !== "avgTime") {
+      document.getElementById("avgTime").value = data.avgConsultTime;
+    }
+
+    // Call next button
+    document.getElementById("btnCallNext").disabled = data.queueLength === 0;
+
+    // Queue list
+    const list = document.getElementById("queueList");
+    if (data.queue.length === 0) {
+      list.innerHTML = `<div class="empty-queue"><div class="emoji">✅</div><p>Queue is empty — add patients to get started.</p></div>`;
+      return;
+    }
+
+    list.innerHTML = data.queue.map((p, i) => `
+      <div class="queue-item" id="qi-${p.token}">
+        <div class="q-token">${String(p.token).padStart(3,"0")}</div>
+        <div class="q-info">
+          <div class="q-name">${escHtml(p.name)}</div>
+          <div class="q-wait">~${p.estimatedWaitMins} min wait</div>
+        </div>
+        <div class="q-pos">#${p.position}</div>
+        <button class="btn btn-danger" onclick="removePatient(${p.token})" title="Remove from queue">✕</button>
+      </div>
+    `).join("");
+  }
+
+  function addPatient() {
+    const input = document.getElementById("patientName");
+    const name = input.value.trim();
+    if (!name) { showToast("Enter a patient name."); input.focus(); return; }
+    socket.emit("add_patient", { name });
+    input.value = "";
+    input.focus();
+    showToast(`Added ${name} to queue.`);
+  }
+
+  function callNext() {
+    if (!currentState || currentState.queueLength === 0) return;
+    socket.emit("call_next");
+  }
+
+  function setAvgTime() {
+    const val = parseInt(document.getElementById("avgTime").value);
+    if (isNaN(val) || val < 1) { showToast("Enter a valid time (1–120 min)."); return; }
+    socket.emit("set_avg_time", { minutes: val });
+    showToast(`Average time set to ${val} min.`);
+  }
+
+  function removePatient(token) {
+    socket.emit("remove_patient", { token });
+    showToast(`Token ${String(token).padStart(3,"0")} removed.`);
+  }
+
+  function confirmReset() {
+    if (confirm("Reset the entire queue? This cannot be undone.")) {
+      socket.emit("reset_queue");
+      showToast("Queue has been reset.");
+    }
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+</script>
+</body>
+</html>

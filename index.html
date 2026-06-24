@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Queue Cure '26</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #070d14;
+      color: #e8f0fe;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .center {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .icon { font-size: 56px; margin-bottom: 20px; }
+    h1 { font-size: 36px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    p { color: #7b93b0; font-size: 16px; margin-bottom: 40px; }
+    .cards {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    a.card {
+      background: #0d1520;
+      border: 1px solid #1d2d40;
+      border-radius: 16px;
+      padding: 32px 40px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, transform 0.15s;
+      min-width: 220px;
+    }
+    a.card:hover { border-color: #4da6ff; transform: translateY(-3px); }
+    .card-icon { font-size: 36px; margin-bottom: 12px; }
+    .card-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .card-desc { font-size: 13px; color: #7b93b0; }
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(77,166,255,0.12);
+      color: #4da6ff;
+      border-radius: 6px;
+      padding: 2px 8px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <div class="icon">🏥</div>
+    <h1>Queue Cure <span style="opacity:0.4">'26</span></h1>
+    <p>Real-time patient queue management — built for the Wooble hackathon</p>
+    <div class="cards">
+      <a class="card" href="/receptionist.html">
+        <div class="tag">Staff</div>
+        <div class="card-icon">🖥️</div>
+        <div class="card-title">Receptionist</div>
+        <div class="card-desc">Add patients, call next token, manage the queue</div>
+      </a>
+      <a class="card" href="/waiting-room.html">
+        <div class="tag">Patients</div>
+        <div class="card-icon">⏳</div>
+        <div class="card-title">Waiting Room</div>
+        <div class="card-desc">See current token, your position, estimated wait</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

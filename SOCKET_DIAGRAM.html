@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Queue Cure '26 — Socket Event Diagram</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #070d14;
+    color: #e8f0fe;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    padding: 40px;
+    min-height: 100vh;
+  }
+  h1 { font-size: 22px; margin-bottom: 6px; font-family: system-ui; }
+  .sub { color: #7b93b0; font-size: 13px; margin-bottom: 40px; font-family: system-ui; }
+
+  .diagram {
+    display: grid;
+    grid-template-columns: 1fr 180px 1fr;
+    gap: 0;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .col-header {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4da6ff;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #1d2d40;
+    margin-bottom: 0;
+  }
+
+  .lifeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .lifeline::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: #1d2d40;
+    transform: translateX(-50%);
+    z-index: 0;
+  }
+
+  .server-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .server-col::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 2px;
+    background: #1d2d40;
+    transform: translateX(-50%);
+    z-index: 0;
+  }
+
+  .spacer { height: 32px; width: 100%; }
+
+  .event-row {
+    display: contents;
+  }
+
+  .arrow-right, .arrow-left, .arrow-both {
+    position: relative;
+    height: 48px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Left client → Server */
+  .left-to-server {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    height: 56px;
+    padding-right: 12px;
+  }
+
+  .server-center {
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 56px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .right-col {
+    grid-column: 3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    height: 56px;
+    padding-left: 12px;
+  }
+
+  .arrow-line {
+    height: 2px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+
+  .arrow-line.blue { background: #1a3a6a; }
+  .arrow-line.green { background: #0a3020; }
+
+  .arrow-line::after {
+    content: '▶';
+    position: absolute;
+    right: -1px;
+    color: #4da6ff;
+    font-size: 10px;
+  }
+  .arrow-line.green::after { color: #00e676; }
+  .arrow-line.left::after { display: none; }
+  .arrow-line.left::before {
+    content: '◀';
+    position: absolute;
+    left: -1px;
+    color: #4da6ff;
+    font-size: 10px;
+  }
+
+  .event-label {
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .event-label.blue { color: #4da6ff; }
+  .event-label.green { color: #00e676; }
+
+  .event-sub {
+    font-size: 10px;
+    color: #3a4f65;
+    white-space: nowrap;
+  }
+
+  .server-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #1d2d40;
+    border: 2px solid #4da6ff;
+    z-index: 2;
+  }
+  .server-dot.green { border-color: #00e676; }
+
+  .group-label {
+    grid-column: 1 / -1;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #3a4f65;
+    text-align: center;
+    padding: 20px 0 8px;
+    border-bottom: 1px dashed #1d2d40;
+  }
+
+  .gap { grid-column: 1 / -1; height: 16px; }
+
+  .legend {
+    margin-top: 48px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .legend h2 { font-size: 14px; font-family: system-ui; color: #7b93b0; margin-bottom: 12px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    background: #0d1520;
+    color: #7b93b0;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #1d2d40;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #0d1520;
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  .ev { color: #4da6ff; }
+  .ev.g { color: #00e676; }
+  .dir { color: #7b93b0; }
+  .pay { color: #c9d1d9; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>Queue Cure '26 — Socket Event Diagram</h1>
+<p class="sub">Real-time queue management · Socket.IO events across Receptionist, Server, and Waiting Room</p>
+
+<div class="diagram">
+
+  <!-- Headers -->
+  <div class="col-header">🖥 Receptionist</div>
+  <div class="col-header">⚡ Server</div>
+  <div class="col-header">⏳ Waiting Room</div>
+
+  <!-- Group: Connection -->
+  <div class="group-label">Connection</div>
+
+  <!-- connect -->
+  <div class="left-to-server">
+    <div style="text-align:right">
+      <div class="event-label blue">connect</div>
+      <div class="event-sub">on page load</div>
+    </div>
+    <div class="arrow-line blue" style="width:60px;margin-left:8px"></div>
+  </div>
+  <div class="server-center"><div class="server-dot"></div></div>
+  <div class="right-col">
+    <div class="arrow-line blue" style="width:60px;margin-right:8px"></div>
+    <div>
+      <div class="event-label blue">connect</div>
+      <div class="event-sub">on page load</div>
+    </div>
+  </div>
+
+  <!-- initial queue_update -->
+  <div class="left-to-server" style="justify-content:flex-start;padding-left:12px;">
+    <div class="arrow-line blue left" style="width:60px;margin-right:8px;background:#0a2040"></div>
+    <div>
+      <div class="event-label green" style="color:#4da6ff">queue_update</div>
+      <div class="event-sub">full snapshot on connect</div>
+    </div>
+  </div>
+  <div class="server-center"><div class="server-dot"></div></div>
+  <div class="right-col">
+    <div>
+      <div class="event-label green" style="color:#4da6ff">queue_update</div>
+      <div class="event-sub">full snapshot on connect</div>
+    </div>
+    <div class="arrow-line blue left" style="width:60px;margin-left:8px;background:#0a2040;transform:scaleX(-1)"></div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- Group: Adding patients -->
+  <div class="group-label">Adding a Patient</div>
+
+  <div class="left-to-server">
+    <div style="text-align:right">
+      <div class="event-label blue">add_patient</div>
+      <div class="event-sub">{ name: "Priya" }</div>
+    </div>
+    <div class="arrow-line blue" style="width:60px;margin-left:8px"></div>
+  </div>
+  <div class="server-center"><div class="server-dot"></div></div>
+  <div class="right-col" style="color:#3a4f65;font-size:11px;padding-left:16px;">—</div>
+
+  <!-- broadcast -->
+  <div class="left-to-server" style="justify-content:flex-start;padding-left:12px;">
+    <div class="arrow-line green left" style="width:60px;margin-right:8px;transform:scaleX(-1)"></div>
+    <div>
+      <div class="event-label green">queue_update</div>
+      <div class="event-sub">new patient in queue</div>
+    </div>
+  </div>
+  <div class="server-center"><div class="server-dot green"></div></div>
+  <div class="right-col">
+    <div>
+      <div class="event-label green">queue_update</div>
+      <div class="event-sub">new patient in queue</div>
+    </div>
+    <div class="arrow-line green left" style="width:60px;margin-left:8px;transform:scaleX(-1)"></div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- Group: Call Next -->
+  <div class="group-label">Calling Next Patient</div>
+
+  <div class="left-to-server">
+    <div style="text-align:right">
+      <div class="event-label blue">call_next</div>
+      <div class="event-sub">no payload</div>
+    </div>
+    <div class="arrow-line blue" style="width:60px;margin-left:8px"></div>
+  </div>
+  <div class="server-center"><div class="server-dot"></div></div>
+  <div class="right-col" style="color:#3a4f65;font-size:11px;padding-left:16px;">—</div>
+
+  <div class="left-to-server" style="justify-content:flex-start;padding-left:12px;">
+    <div class="arrow-line green left" style="width:60px;margin-right:8px;transform:scaleX(-1)"></div>
+    <div>
+      <div class="event-label green">queue_update</div>
+      <div class="event-sub">currentToken updated</div>
+    </div>
+  </div>
+  <div class="server-center"><div class="server-dot green"></div></div>
+  <div class="right-col">
+    <div>
+      <div class="event-label green">queue_update</div>
+      <div class="event-sub">hero token changes live</div>
+    </div>
+    <div class="arrow-line green left" style="width:60px;margin-left:8px;transform:scaleX(-1)"></div>
+  </div>
+
+  <div class="gap"></div>
+
+  <!-- Group: Other events -->
+  <div class="group-label">Other Receptionist Events</div>
+
+  <div class="left-to-server">
+    <div style="text-align:right">
+      <div class="event-label blue">set_avg_time</div>
+      <div class="event-sub">{ minutes: 15 }</div>
+    </div>
+    <div class="arrow-line blue" style="width:60px;margin-left:8px"></div>
+  </div>
+  <div class="server-center"><div class="server-dot"></div></div>
+  <div class="right-col" style="color:#3a4f65;font-size:11px;padding-left:16px;">→ queue_update (recalculated waits)</div>
+
+  <div class="left-to-server">
+    <div style="text-align:right">
+      <div class="event-label blue">remove_patient</div>
+      <div class="event-sub">{ token: 4 }</div>
+    </div>
+    <div class="arrow-line blue" style="width:60px;margin-left:8px"></div>
+  </div>
+  <div class="server-center"><div class="server-dot"></div></div>
+  <div class="right-col" style="color:#3a4f65;font-size:11px;padding-left:16px;">→ queue_update (patient removed)</div>
+
+  <div class="left-to-server">
+    <div style="text-align:right">
+      <div class="event-label blue">reset_queue</div>
+      <div class="event-sub">no payload</div>
+    </div>
+    <div class="arrow-line blue" style="width:60px;margin-left:8px"></div>
+  </div>
+  <div class="server-center"><div class="server-dot"></div></div>
+  <div class="right-col" style="color:#3a4f65;font-size:11px;padding-left:16px;">→ queue_update (empty state)</div>
+
+  <!-- 30s refresh -->
+  <div class="gap"></div>
+  <div class="group-label">Automatic Time Refresh (every 30s)</div>
+  <div class="left-to-server" style="color:#3a4f65;font-size:11px;padding-right:12px;justify-content:flex-end;">—</div>
+  <div class="server-center"><div class="server-dot" style="border-color:#d29922"></div></div>
+  <div class="right-col">
+    <div>
+      <div class="event-label" style="color:#d29922">queue_update</div>
+      <div class="event-sub">wait times decay in real time</div>
+    </div>
+    <div class="arrow-line" style="width:60px;margin-left:8px;background:#2a1f00;transform:scaleX(-1)"></div>
+  </div>
+
+</div>
+
+<!-- Event table -->
+<div class="legend">
+  <h2>Event Reference</h2>
+  <table>
+    <tr>
+      <th>Event</th><th>Direction</th><th>Payload</th><th>Effect</th>
+    </tr>
+    <tr>
+      <td class="ev">add_patient</td>
+      <td class="dir">Receptionist → Server</td>
+      <td class="pay">{ name: string }</td>
+      <td>Appends patient to queue, assigns token, broadcasts</td>
+    </tr>
+    <tr>
+      <td class="ev">call_next</td>
+      <td class="dir">Receptionist → Server</td>
+      <td class="pay">—</td>
+      <td>Shifts queue head → currentToken, records serviceStartedAt, broadcasts</td>
+    </tr>
+    <tr>
+      <td class="ev">set_avg_time</td>
+      <td class="dir">Receptionist → Server</td>
+      <td class="pay">{ minutes: number }</td>
+      <td>Updates avgConsultTime, recomputes all waits, broadcasts</td>
+    </tr>
+    <tr>
+      <td class="ev">remove_patient</td>
+      <td class="dir">Receptionist → Server</td>
+      <td class="pay">{ token: number }</td>
+      <td>Filters patient out of queue, broadcasts</td>
+    </tr>
+    <tr>
+      <td class="ev">reset_queue</td>
+      <td class="dir">Receptionist → Server</td>
+      <td class="pay">—</td>
+      <td>Clears all state, resets counters, broadcasts empty state</td>
+    </tr>
+    <tr>
+      <td class="ev g">queue_update</td>
+      <td class="dir">Server → All Clients</td>
+      <td class="pay">Full snapshot (queue[], currentToken, servedCount, …)</td>
+      <td>Both screens re-render with no page refresh</td>
+    </tr>
+  </table>
+</div>
+
+</body>
+</html>

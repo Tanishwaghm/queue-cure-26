@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Queue Cure '26 — Waiting Room</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #070d14;
+      --surface: #0d1520;
+      --surface2: #111c2b;
+      --border: #1d2d40;
+      --blue: #4da6ff;
+      --blue-glow: rgba(77,166,255,0.15);
+      --green: #00e676;
+      --green-glow: rgba(0,230,118,0.15);
+      --amber: #ffb300;
+      --text: #e8f0fe;
+      --text-dim: #7b93b0;
+      --text-dimmer: #3a4f65;
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #1a3a6a, #2f5499);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .logo p {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 1px;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--green);
+      background: var(--green-glow);
+      border: 1px solid rgba(0,230,118,0.25);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.8s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ── Hero: Now Serving ── */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 56px 32px 40px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-label {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .now-serving-token {
+      font-family: var(--mono);
+      font-size: clamp(80px, 18vw, 160px);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -4px;
+      background: linear-gradient(135deg, #4da6ff 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 40px rgba(77,166,255,0.3));
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .now-serving-token.empty {
+      background: none;
+      -webkit-text-fill-color: var(--text-dimmer);
+      filter: none;
+      font-size: clamp(48px, 10vw, 80px);
+    }
+
+    .now-serving-name {
+      font-size: clamp(16px, 3vw, 22px);
+      color: var(--text-dim);
+      margin-top: 12px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      min-height: 28px;
+    }
+
+    /* Glow ring behind token */
+    .token-glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -60%);
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(77,166,255,0.08) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* ── Divider with queue count ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 32px;
+      margin: 8px 0 24px;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .divider-label {
+      font-size: 12px;
+      color: var(--text-dimmer);
+      font-weight: 500;
+    }
+
+    /* ── Your ticket lookup ── */
+    .lookup-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .lookup-bar label {
+      font-size: 13px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .lookup-bar input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: var(--mono);
+      padding: 8px 14px;
+      width: 100px;
+      outline: none;
+      text-align: center;
+    }
+
+    .lookup-bar input:focus { border-color: var(--blue); }
+
+    .lookup-result {
+      font-size: 13px;
+      color: var(--text-dim);
+      flex: 1;
+    }
+
+    .highlight { color: var(--amber); font-weight: 600; font-family: var(--mono); }
+    .highlight.good { color: var(--green); }
+
+    /* ── Queue ticker ── */
+    .queue-section {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    .queue-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .queue-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      animation: popIn 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .chip-token {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    .chip-name {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .chip-wait {
+      font-size: 10px;
+      color: var(--text-dimmer);
+      margin-top: 2px;
+    }
+
+    .chip-pos {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-size: 9px;
+      color: var(--text-dimmer);
+      font-family: var(--mono);
+    }
+
+    .queue-chip.next-up {
+      border-color: rgba(0,230,118,0.4);
+      background: var(--surface2);
+    }
+
+    .next-label {
+      font-size: 9px;
+      color: var(--green);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .empty-wait {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dimmer);
+    }
+
+    .empty-wait .big { font-size: 48px; margin-bottom: 12px; }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-stat {
+      font-size: 12px;
+      color: var(--text-dimmer);
+    }
+
+    .footer-stat span {
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-weight: 600;
+    }
+
+    @media (max-width: 600px) {
+      .hero { padding: 40px 20px 28px; }
+      .lookup-bar, .queue-section, footer { padding-left: 20px; padding-right: 20px; }
+      .divider { padding: 0 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏥</div>
+    <div>
+      <h1>Queue Cure <small style="opacity:0.5">'26</small></h1>
+      <p>Patient Waiting Room</p>
+    </div>
+  </div>
+  <div class="live-badge" id="liveBadge">
+    <div class="live-dot"></div>
+    LIVE
+  </div>
+</header>
+
+<!-- Now Serving Hero -->
+<div class="hero">
+  <div class="token-glow"></div>
+  <div class="hero-label">Now Serving</div>
+  <div class="now-serving-token empty" id="heroToken">—</div>
+  <div class="now-serving-name" id="heroName"></div>
+</div>
+
+<div class="divider">
+  <div class="divider-line"></div>
+  <div class="divider-label" id="divLabel">0 patients waiting</div>
+  <div class="divider-line"></div>
+</div>
+
+<!-- Token lookup -->
+<div class="lookup-bar">
+  <label>Check your token:</label>
+  <input type="number" id="myToken" placeholder="001" min="1" oninput="lookupToken()" />
+  <div class="lookup-result" id="lookupResult">Enter your token number above</div>
+</div>
+
+<!-- Queue grid -->
+<div class="queue-section">
+  <div class="queue-grid" id="queueGrid"></div>
+</div>
+
+<footer>
+  <div class="footer-stat">Served today: <span id="footerServed">0</span></div>
+  <div class="footer-stat">Avg wait per patient: <span id="footerAvg">—</span> min</div>
+</footer>
+
+<script>
+  const socket = io();
+  let currentData = null;
+
+  socket.on("connect", () => {
+    document.getElementById("liveBadge").style.opacity = "1";
+  });
+
+  socket.on("disconnect", () => {
+    document.getElementById("liveBadge").style.opacity = "0.4";
+  });
+
+  socket.on("queue_update", (data) => {
+    currentData = data;
+    render(data);
+    lookupToken();
+  });
+
+  function render(data) {
+    // Hero token
+    const heroToken = document.getElementById("heroToken");
+    const heroName  = document.getElementById("heroName");
+
+    if (data.currentToken !== null) {
+      heroToken.textContent = String(data.currentToken).padStart(3, "0");
+      heroToken.className = "now-serving-token";
+      heroName.textContent = data.currentName;
+    } else {
+      heroToken.textContent = "—";
+      heroToken.className = "now-serving-token empty";
+      heroName.textContent = "No patient is being seen yet";
+    }
+
+    // Divider
+    const count = data.queueLength;
+    document.getElementById("divLabel").textContent =
+      count === 0 ? "No one waiting" :
+      count === 1 ? "1 patient waiting" :
+      `${count} patients waiting`;
+
+    // Footer
+    document.getElementById("footerServed").textContent = data.servedCount;
+    document.getElementById("footerAvg").textContent = data.avgConsultTime;
+
+    // Queue grid
+    const grid = document.getElementById("queueGrid");
+    if (data.queue.length === 0) {
+      grid.innerHTML = `<div class="empty-wait" style="grid-column:1/-1"><div class="big">🎉</div><p>Queue is clear — you'll be seen shortly!</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = data.queue.map((p, i) => `
+      <div class="queue-chip ${i === 0 ? 'next-up' : ''}">
+        <div class="chip-pos">#${p.position}</div>
+        <div class="chip-token">${String(p.token).padStart(3,"0")}</div>
+        <div class="chip-name">${escHtml(p.name)}</div>
+        <div class="chip-wait">~${p.estimatedWaitMins} min</div>
+        ${i === 0 ? '<div class="next-label">Next up</div>' : ''}
+      </div>
+    `).join("");
+  }
+
+  function lookupToken() {
+    const input = parseInt(document.getElementById("myToken").value);
+    const result = document.getElementById("lookupResult");
+    if (!currentData || isNaN(input)) {
+      result.innerHTML = "Enter your token number above";
+      return;
+    }
+
+    if (currentData.currentToken === input) {
+      result.innerHTML = `<span class="highlight good">🟢 It's your turn — please proceed to the doctor!</span>`;
+      return;
+    }
+
+    const found = currentData.queue.find(p => p.token === input);
+    if (found) {
+      const ahead = found.position - 1;
+      result.innerHTML =
+        `Token <span class="highlight">${String(input).padStart(3,"0")}</span> — ` +
+        `<span class="highlight">${ahead}</span> patient${ahead !== 1 ? "s" : ""} ahead — ` +
+        `estimated wait <span class="highlight">~${found.estimatedWaitMins} min</span>`;
+    } else if (input < (currentData.nextTokenNum || 1)) {
+      result.innerHTML = `Token <span class="highlight">${String(input).padStart(3,"0")}</span> — already served ✓`;
+    } else {
+      result.innerHTML = `Token <span class="highlight">${String(input).padStart(3,"0")}</span> — not found in queue`;
+    }
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+</script>
+</body>
+</html>
